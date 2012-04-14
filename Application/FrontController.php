@@ -3,8 +3,10 @@
 namespace Serenity\Application;
 
 /**
- * Loads and instantiates an action controller and runs action specified by
- * user request.
+ * The entry point of a MVC driven application.
+ *
+ * Loads and instantiates an action controller and runs action both specified
+ * in the given request.
  *
  * @category Serenity
  * @package  Application
@@ -17,11 +19,11 @@ class FrontController
     private $controllerDir = '../Application/Controllers';
 
     /**
-     * Dependency provider for an action controllers.
+     * Dependency injector for an action controllers.
      *
      * @var callable|null
      */
-    private $dependencyProvider = null;
+    private $dependencyInjector = null;
 
     /**
      * Set controllers directory.
@@ -34,15 +36,15 @@ class FrontController
     }
 
     /**
-     * Set a dependency provider for an action controllers.
+     * Set a dependency injector for an action controllers.
      *
-     * @param callable $dependencyProvider A dependency providing callback.
+     * @param callable $dependencyInjector A dependency injecting callback.
      *
      * @return FrontController Self instance.
      */
-    public function setDependencyProvider($dependencyProvider)
+    public function setDependencyInjector($dependencyInjector)
     {
-        $this->dependencyProvider = $dependencyProvider;
+        $this->dependencyInjector = $dependencyInjector;
 
         return $this;
     }
@@ -69,27 +71,6 @@ class FrontController
         require_once $filePath;
 
         return new $controllerClass($this);
-    }
-
-    protected function _provideControllerDependencies($controller)
-    {
-        $reflection = new \ReflectionObject($controller);
-
-        foreach ($reflection->getProperties() as $property) {
-            $docComment = $property->getDocComment();
-
-            if (\preg_match('/@dependency\s*/', $docComment)) {
-                \preg_match('/@var\s+([^|\s]+)/', $docComment, $class);
-
-                $class = \preg_replace('/^\\\/', '', $class[1], 1);
-                $dependency = (null !== $this->dependencyProvider)
-                    ? \call_user_func($this->dependencyProvider, $class)
-                    : new $class();
-
-                $property->setAccessible(true);
-                $property->setValue($controller, $dependency);
-            }
-        }
     }
 
     /**
@@ -155,11 +136,14 @@ class FrontController
     {
         if (empty($request['controller']) || empty($request['action'])) {
             $message = 'Controller and action must be specified in the request';
-            throw new FrontControllerException($message);
+            throw new \InvalidArgumentException($message);
         }
 
         $controller = $this->_getController($request['controller']);
-        $this->_provideControllerDependencies($controller);
+
+        if (null !== $this->dependencyInjector) {
+            \call_user_func($this->dependencyInjector, $controller);
+        }
 
         $action = $request['action'];
         unset($request['controller'], $request['action']);
