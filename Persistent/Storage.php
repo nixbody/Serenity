@@ -13,45 +13,62 @@ namespace Serenity\Persistent;
 class Storage
 {
     /**
-     * @var \PDO A database adapter.
+     * A database adapter.
+     *
+     * @var \PDO
      */
     private $db;
 
     /**
-     * @var array The database query log.
+     * The database query log.
+     *
+     * @var array
      */
     private $log = array();
 
     /**
-     * @var string An object classes namespace.
+     * An object classes namespace.
+     *
+     * @var string
      */
     protected $namespace = '';
 
     /**
-     * @var string Name of a class which instance to return.
+     * Name of a class which instance to return.
+     *
+     * @var string
      */
     protected $class = '\stdClass';
 
     /**
-     * @var string Name of a database table from which select the records.
+     * Name of a database table from which select the records.
+     *
+     * @var string
      */
     protected $table;
 
     /**
-     * @var string Name of a table column which is the primary key.
+     * Name of a table column which is the primary key.
+     *
+     * @var string
      */
     protected $primaryKey = 'id';
 
     /**
-     * @var array When some object is loaded or saved all it's data are stored
-     *            in this array and next time when object is saved only changed
-     *            data are actually sent to the database.
+     * When some object is loaded or saved all it's data are stored in this
+     * array and next time when object is saved only changed data are actually
+     * sent to the database.
+     *
+     * @var array
      */
     private $recordCache = array();
 
+    /**
+     * Every loaded or saved object is stored in this cache.
+     *
+     * @var array
+     */
     private $objectCache = array();
-
-    private $reflectionCache = array();
 
     /**
      * Constructor.
@@ -236,26 +253,48 @@ class Storage
             return ($isList) ? array() : null;
         }
 
-        $primaryKey = $this->primaryKey;
-        $query = ($isList)
-            ? "SELECT * FROM `$this->table` WHERE `$primaryKey` IN (?)"
-            : "SELECT * FROM `$this->table` WHERE `$primaryKey` = ?";
+        if ($isList) {
+            $objects = \array_flip($pkValues);
+            foreach ($pkValues as $pkValue) {
+                $objectId = $this->class . '_' . $pkValue;
+                if (isset($this->objectCache[$objectId])) {
+                    $objects[$objectId] = $this->objectCache[$objectId];
+                }
+            }
 
-        $statement = $this->db->query($query, $pkValues);
-        $objects = ($isList) ? \array_flip($pkValues) : null;
+            $objects = \array_filter($objects, 'is_object');
+            if (\count($pkValues) === \count($objects)) {
+                return $objects;
+            }
+
+            $condition = "`$this->primaryKey` IN (?)";
+        } else {
+            $objectId = $this->class . '_' . $pkValues;
+            if (isset($this->objectCache[$objectId])) {
+                return $this->objectCache[$objectId];
+            }
+
+            $condition = "`$this->primaryKey` = ?";
+        }
+
+        $query = "SELECT * FROM `$this->table` WHERE $condition";
+        $statement = $this->query($query, $pkValues);
         while ($record = $statement->fetch(\PDO::FETCH_ASSOC)) {
             $object = $this->create($this->class, $record);
 
-            if ($isList) {
-                $object[$record[$this->primaryKey]] = $object;
+            $recordId = $this->table . '_' . $record[$this->primaryKey];
+            $objectId = $this->class . '_' . $recordId;
+            $this->recordCache[$recordId] = $record;
+            $this->objectCache[$objectId] = $object;
+
+            if (!$isList) {
+                return $object;
             }
 
-            $recordId = $this->table . '_' . $record[$this->primaryKey];
-            $this->recordCache[$recordId] = $record;
-            $this->objectCache[\get_class($object) . '_' . $recordId] = $object;
+            $objects[$record[$this->primaryKey]] = $object;
         }
 
-        return ($isList) ? new \ArrayObject($objects) : $objects;
+        return new \ArrayObject($objects);
     }
 
     /**
@@ -280,6 +319,21 @@ class Storage
         $statement = \call_user_func_array(array($this, 'query'), $args);
 
         return $this->get($statement->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    /**
+     * Search and get an objects from the storage.
+     *
+     * @param string $options An SQL options.
+     * @param array  $params  A list of parameters.
+     *
+     * @return \ArrayObject List of found objects (could be empty).
+     */
+    public function vSearch($options = '', array $params = array())
+    {
+        \array_unshift($params, $options);
+
+        return \call_user_func_array(array($this, 'search'), $params);
     }
 
     /**
@@ -352,9 +406,9 @@ class Storage
             $data = $this->getObjectData($object);
             $recordId = $this->getRecordId($data);
 
-            if ($recordId !== null) {
-                $newData = (isset(self::$recordCache[$recordId]))
-                    ? \array_diff($data, self::$recordCache[$recordId])
+            if (null !== $recordId) {
+                $newData = (isset($this->recordCache[$recordId]))
+                    ? \array_diff($data, $this->recordCache[$recordId])
                     : $data;
 
                 if (!empty($newData)) {
@@ -362,10 +416,10 @@ class Storage
                     $query = "UPDATE `$this->table` SET `$set` = ? "
                            . "WHERE `$this->primaryKey` = ?";
 
-                    $args = \array_values(array($query) + $newData);
-                    $args[] = $data[$this->primaryKey];
+                    $newData = \array_values($newData);
+                    $newData[] = $data[$this->primaryKey];
 
-                    $this->vQuery($query, $args);
+                    $this->vQuery($query, $newData);
                 }
             } else {
                 $columns = \implode('`, `', \array_keys($data));
@@ -374,18 +428,17 @@ class Storage
                 $this->query($query, $data);
 
                 if (empty($data[$this->primaryKey])) {
-                    $pkValue = $this->db->lastInsertId();
-                    $data[$this->primaryKey] = $pkValue;
+                    $data[$this->primaryKey] = $this->db->lastInsertId();
                     $this->setObjectData($object, array(
-                        $this->primaryKey => $pkValue
+                        $this->primaryKey => $data[$this->primaryKey]
                     ));
                 }
 
                 $recordId = $this->table . '_' . $data[$this->primaryKey];
             }
 
-            self::$recordCache[$recordId] = $data;
-            self::$objectCache[\get_class($object) . "_$recordId"] = $object;
+            $this->recordCache[$recordId] = $data;
+            $this->objectCache[\get_class($object) . "_$recordId"] = $object;
         }
 
         return $this;
@@ -408,7 +461,7 @@ class Storage
         $pkValue = $data[$this->primaryKey];
         $recordId = $this->table . '_' . $pkValue;
 
-        if (!isset(self::$recordCache[$recordId])) {
+        if (!isset($this->recordCache[$recordId])) {
             $query = "SELECT 1 FROM `$this->table` "
                    . "WHERE `$this->primaryKey` = ?";
 
@@ -453,14 +506,14 @@ class Storage
 
     public function getObjectReflection($object)
     {
+        static $reflections = array();
+
         $class = \get_class($object);
-        if (isset($this->reflectionCache[$class])) {
-            return $this->reflectionCache[$class];
+        if (isset($reflections[$class])) {
+            return $reflections[$class];
         }
 
-        $this->reflectionCache[$class] = new \ReflectionObject($object);
-
-        return $this->reflectionCache[$class];
+        return $reflections[$class] = new \ReflectionClass($class);
     }
 
     /**
@@ -477,8 +530,10 @@ class Storage
             foreach ($data as $key => $value) {
                 $object->$key = $value;
             }
+        } elseif (\method_exists($object, 'setData')) {
+            $object->setData($data);
         } else {
-            $reflection = new \ReflectionObject($object);
+            $reflection = $this->getObjectReflection($object);
             foreach ($data as $key => $value) {
                 if ($reflection->hasProperty($key)) {
                     $this->_setPropertyValue(
@@ -504,14 +559,16 @@ class Storage
      */
     public function getObjectData($object)
     {
-        if (\method_exists($object, 'getData')) {
+        if ($object instanceof \stdClass) {
+            $data = (array) $object;
+        } elseif (\method_exists($object, 'getData')) {
             $data = (array) $object->getData();
         } else {
             $data = array();
-            $reflection = new \ReflectionObject($object);
-            foreach ($reflection->getProperties() as $property) {
+            $properties = $this->getObjectReflection($object)->getProperties();
+            foreach ($properties as $property) {
                 $key = $property->getName();
-                if ($key[0] != '_') {
+                if ('_' !== $key[0]) {
                     $property->setAccessible(true);
                     $data[$key] = $property->getValue($object);
                 }
@@ -564,7 +621,7 @@ class Storage
         $statement = $this->db->prepare($query);
         $statement->execute($params);
 
-        if ($this->log !== null) {
+        if (null !== $this->log) {
             $this->_logQuery($query, \microtime(true) - $time, $params);
         }
 
