@@ -119,7 +119,7 @@ class ServiceManager
 
         if (!empty($args)) {
             $reflection = new \ReflectionClass($class);
-            $args = $this->replaceArgPlaceholders($args);
+            $args = $this->_replaceArgPlaceholders($args);
 
             return $reflection->newInstanceArgs($args);
         } else {
@@ -154,7 +154,7 @@ class ServiceManager
 
             $service = $this->createService($class, $args);
             foreach ($calls as $method => $args) {
-                $args = $this->replaceArgPlaceholders($args);
+                $args = $this->_replaceArgPlaceholders((array) $args);
                 \call_user_func_array(array($service, $method), $args);
             }
 
@@ -203,12 +203,14 @@ class ServiceManager
         throw new ServiceManagerException($message);
     }
 
-    protected function replaceArgPlaceholders(array $args)
+    protected function _replaceArgPlaceholders(array $args)
     {
         $self = $this;
         \array_walk_recursive($args, function(&$arg) use ($self) {
-            if (\is_string($arg) && \substr($arg, 0, 1) === '@') {
-                $arg = $self->getService(\substr($arg, 1));
+            if (\is_string($arg) && '@' === \substr($arg, 0, 1)) {
+                $arg = ('@this' !== $arg)
+                    ? $self->getService(\substr($arg, 1))
+                    : $self;
             }
         });
 
