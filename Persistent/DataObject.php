@@ -103,9 +103,9 @@ abstract class DataObject
     private function _processRelationalMetaData(array $metaData)
     {
         $reference = $this->_parseReferenceString($metaData['reference']);
+        $property = $this->_storage->getObjectReflection($this)
+                         ->getProperty($reference[0]);
 
-        $reflection = new \ReflectionObject($this);
-        $property = $reflection->getProperty($reference[0]);
         $property->setAccessible(true);
         $value = $property->getValue($this);
 
@@ -174,6 +174,16 @@ abstract class DataObject
         }
 
         return $this->_metaData;
+    }
+
+    /**
+     * Get the object reflection.
+     *
+     * @return \ReflectionClass The object reflection.
+     */
+    public function getReflection()
+    {
+        return $this->_storage->getObjectReflection($this);
     }
 
     public function toArray()
@@ -285,7 +295,7 @@ abstract class DataObject
 
     protected function _loadOne(array $metaData)
     {
-        if ($metaData['primaryKey'] == $metaData['column']) {
+        if ($metaData['primaryKey'] === $metaData['column']) {
             return $this->_storage->get($metaData['value']);
         }
 
@@ -308,18 +318,8 @@ abstract class DataObject
     }
 
     /**
-     * Get the persistent storage.
-     *
-     * @return Storage The persistent storage.
-     */
-    protected function getStorage()
-    {
-        return $this->_storage;
-    }
-
-    /**
-     * Save the object into the persistent storage. All related objects with
-     * relation other than BELONGS_TO are saved as well.
+     * Save the object into the persistent storage.
+     * All related child objects with are saved as well.
      */
     public function save()
     {
@@ -337,21 +337,25 @@ abstract class DataObject
             $relMeta = $metaData['relatedObjects'];
 
             foreach ($this->_relatedObjects as $name => $related) {
-                if ($relMeta[$name]['relation'] != self::BELONGS_T0) {
+                if (self::BELONGS_T0 !== $relMeta[$name]['relation']) {
                     $column = $relMeta[$name]['column'];
 
-                    $reflection = new \ReflectionObject($this);
-                    $value = $reflection->getProperty($metaData['primaryKey']);
+                    $value = $this->getReflection()
+                                  ->getProperty($metaData['primaryKey']);
+
                     $value->setAccessible(true);
                     $value = $value->getValue($this);
-
                     foreach ($related as $object) {
-                        $reflection = new \ReflectionObject($object);
+                        $reflection = $this->_storage
+                                           ->getObjectReflection($object);
+
                         $property = $reflection->getProperty($column);
                         $property->setAccessible(true);
                         $property->setValue($object, $value);
 
-                        $object->save();
+                        (!$reflection->hasMethod('save'))
+                            ? $this->_storage->save($object)
+                            : $object->save();
                     }
                 }
             }
