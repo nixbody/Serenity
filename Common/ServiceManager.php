@@ -28,10 +28,14 @@ class ServiceManager
      * @param string $serviceName The service name.
      *
      * @return object The requested service instance.
+     *
+     * @throws ServiceManagerException If the requested service is not
+     *                                 registred or the service class
+     *                                 does not exist.
      */
-    public function __invoke($serviceClass)
+    public function __get($serviceName)
     {
-        return $this->getServiceByClass($serviceClass);
+        return $this->getService($serviceName);
     }
 
     /**
