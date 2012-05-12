@@ -61,7 +61,7 @@ class ActionController
     }
 
     /**
-     * Redirect to specified uri.
+     * Redirect to the given URI.
      *
      * @param string $uri A URI to which redirect.
      */
@@ -71,6 +71,14 @@ class ActionController
 
         \header("Location: $uri");
         exit(0);
+    }
+
+    /**
+     * Redirect to previous URI.
+     */
+    protected function redirectBack()
+    {
+        $this->redirect(\filter_input(\INPUT_SERVER, 'HTTP_REFERER') ?: '/');
     }
 
     /**
