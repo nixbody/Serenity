@@ -25,6 +25,19 @@ class ClassLoader
     public function addClassDir($classDir)
     {
         $this->classDirs[] = \realpath($classDir);
+    /**
+     * Add a list of root directories where to start finding classes.
+     *
+     * @param array $classDirs A list of root directories where to start
+     *                         finding classes.
+     *
+     * @return ClassLoader Self instance.
+     */
+    public function addClassDirs(array $classDirs)
+    {
+        foreach ($classDirs as $classDir) {
+            $this->addClassDir($classDir);
+        }
 
         return $this;
     }
