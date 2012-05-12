@@ -11,7 +11,9 @@ namespace Serenity\Common;
 class ClassLoader
 {
     /**
-     * @var array Root directories where to start finding classes.
+     * Root directories where to start finding classes.
+     *
+     * @var array
      */
     private $classDirs = array();
 
@@ -52,7 +54,7 @@ class ClassLoader
     }
 
     /**
-     * Try and load specified class.
+     * Try to load specified class.
      *
      * @param string $className Name of the class that should be loaded.
      *
