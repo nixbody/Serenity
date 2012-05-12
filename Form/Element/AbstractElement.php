@@ -47,6 +47,30 @@ abstract class AbstractElement
     }
 
     /**
+     * Get a value of the given attribute.
+     *
+     * @param string $attribute Name of the attribute of which to get a value.
+     *
+     * @return string A value of the given attribute.
+     */
+    public function __get($attribute)
+    {
+        switch ((string) $attribute) {
+            case 'name':
+                return $this->name;
+
+            case 'label':
+                return $this->label;
+
+            case 'message':
+                return $this->message;
+
+            default:
+                return $this->getAttribute($attribute);
+        }
+    }
+
+    /**
      * Get name of element.
      *
      * @return string Name of element.
