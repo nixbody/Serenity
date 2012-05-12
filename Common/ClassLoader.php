@@ -21,10 +21,19 @@ class ClassLoader
      * @param string $classDir Root directory where to start finding classes.
      *
      * @return ClassLoader Self instance.
+     *
+     * @throws \InvalidArgumentException If the given directory does not exist.
      */
     public function addClassDir($classDir)
     {
-        $this->classDirs[] = \realpath($classDir);
+        if (false === ($this->classDirs[] = \realpath((string) $classDir))) {
+            $message = "The given directory '$classDir' does not exist.";
+            throw new \InvalidArgumentException($message);
+        }
+
+        return $this;
+    }
+
     /**
      * Add a list of root directories where to start finding classes.
      *
