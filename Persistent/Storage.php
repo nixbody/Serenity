@@ -20,6 +20,13 @@ class Storage
     private $db;
 
     /**
+     * A dependency injector for an objects created by the storage.
+     *
+     * @var callable|null
+     */
+    private $dependencyInjector = null;
+
+    /**
      * The database query log.
      *
      * @var array
@@ -78,6 +85,20 @@ class Storage
     public function __construct(\PDO $db)
     {
         $this->db = $db;
+    }
+
+    /**
+     * Set a dependency injector for an objects created by the storage.
+     *
+     * @param callable $dependencyInjector A dependency injecting callback.
+     *
+     * @return Storage Self instance.
+     */
+    public function setDepenecyInjector($dependencyInjector)
+    {
+        $this->dependencyInjector = $dependencyInjector;
+
+        return $this;
     }
 
     /**
@@ -230,6 +251,10 @@ class Storage
             : \substr($class, 1);
 
         $object = new $class($this);
+        if (null !== $this->dependencyInjector) {
+            \call_user_func($this->dependencyInjector, $object);
+        }
+
         if (\method_exists($object, 'init')) {
             $object->init();
         }
