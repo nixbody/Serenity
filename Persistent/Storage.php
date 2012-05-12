@@ -260,7 +260,7 @@ class Storage
         }
 
         return (!empty($data))
-            ? $this->setObjectData($object, $data)
+            ? $this->importObjectData($object, $data)
             : $object;
     }
 
@@ -275,7 +275,7 @@ class Storage
     {
         $isList = \is_array($pkValues);
         if (empty($pkValues)) {
-            return ($isList) ? array() : null;
+            return ($isList) ? new \ArrayObject() : null;
         }
 
         if ($isList) {
@@ -294,6 +294,7 @@ class Storage
 
             $condition = "`$this->primaryKey` IN (?)";
         } else {
+            $objects = array();
             $objectId = $this->class . '_' . $pkValues;
             if (isset($this->objectCache[$objectId])) {
                 return $this->objectCache[$objectId];
@@ -312,14 +313,12 @@ class Storage
             $this->recordCache[$recordId] = $record;
             $this->objectCache[$objectId] = $object;
 
-            if (!$isList) {
-                return $object;
-            }
-
             $objects[$record[$this->primaryKey]] = $object;
         }
 
-        return new \ArrayObject($objects);
+        return ($isList)
+            ? new \ArrayObject($objects)
+            : \current($objects) ?: null;
     }
 
     /**
@@ -428,18 +427,18 @@ class Storage
         }
 
         foreach ($objects as $object) {
-            $data = $this->getObjectData($object);
+            $data = $this->exportObjectData($object);
             $recordId = $this->getRecordId($data);
 
             if (null !== $recordId) {
                 $newData = (isset($this->recordCache[$recordId]))
-                    ? \array_diff($data, $this->recordCache[$recordId])
+                    ? \array_diff_assoc($data, $this->recordCache[$recordId])
                     : $data;
 
                 if (!empty($newData)) {
                     $set = \implode('` = ?, `', \array_keys($newData));
-                    $query = "UPDATE `$this->table` SET `$set` = ? "
-                           . "WHERE `$this->primaryKey` = ?";
+                    $query = "UPDATE `$this->table` SET `$set` = ?"
+                           . " WHERE `$this->primaryKey` = ?";
 
                     $newData = \array_values($newData);
                     $newData[] = $data[$this->primaryKey];
@@ -454,7 +453,7 @@ class Storage
 
                 if (empty($data[$this->primaryKey])) {
                     $data[$this->primaryKey] = $this->db->lastInsertId();
-                    $this->setObjectData($object, array(
+                    $this->importObjectData($object, array(
                         $this->primaryKey => $data[$this->primaryKey]
                     ));
                 }
@@ -487,8 +486,8 @@ class Storage
         $recordId = $this->table . '_' . $pkValue;
 
         if (!isset($this->recordCache[$recordId])) {
-            $query = "SELECT 1 FROM `$this->table` "
-                   . "WHERE `$this->primaryKey` = ?";
+            $query = "SELECT COUNT(*) FROM `$this->table`"
+                   . " WHERE `$this->primaryKey` = ?";
 
             if (!$this->query($query, $pkValue)->fetchColumn()) {
                 return null;
@@ -499,7 +498,7 @@ class Storage
     }
 
     /**
-     * Try and determine specified object property type from doc comment and
+     * Try to determine specified object property type from doc comment and
      * set it's value. All native PHP data types are supported plus DateTime.
      *
      * @param object              $object   An object which property set.
@@ -554,14 +553,14 @@ class Storage
      *
      * @return Storage Self instance.
      */
-    public function setObjectData($object, array $data)
+    public function importObjectData($object, array $data)
     {
         if ($object instanceof \stdClass) {
             foreach ($data as $key => $value) {
                 $object->$key = $value;
             }
-        } elseif (\method_exists($object, 'setData')) {
-            $object->setData($data);
+        } elseif (\method_exists($object, 'import')) {
+            $object->import($data);
         } else {
             $reflection = $this->getObjectReflection($object);
             foreach ($data as $key => $value) {
@@ -580,19 +579,19 @@ class Storage
 
     /**
      * Get an object data as array. The keys are the property names.
-     * If specified object implements public method getData then the result of
+     * If specified object implements public method export then the result of
      * this method will be converted to an array and returned.
      *
      * @param mixed $object An object which data get.
      *
      * @return array An object data.
      */
-    public function getObjectData($object)
+    public function exportObjectData($object)
     {
         if ($object instanceof \stdClass) {
             $data = (array) $object;
-        } elseif (\method_exists($object, 'getData')) {
-            $data = (array) $object->getData();
+        } elseif (\method_exists($object, 'export')) {
+            $data = (array) $object->export();
         } else {
             $data = array();
             $properties = $this->getObjectReflection($object)->getProperties();
