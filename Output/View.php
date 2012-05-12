@@ -13,7 +13,7 @@ class View
     /**
      * @var string View templates directory.
      */
-    private $templateDir = '';
+    private $templateDir = './private/Application/Templates';
 
     /**
      * @var string Path to view layout file.
