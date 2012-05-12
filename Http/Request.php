@@ -11,13 +11,6 @@ namespace Serenity\Http;
 class Request
 {
     /**
-     * The request parameters cache.
-     *
-     * @var array
-     */
-    private $paramCache = array();
-
-    /**
      * Get a list of the request parameters from the given source.
      * The given request may be get, post, cookie, server or env.
      *
@@ -31,16 +24,14 @@ class Request
         $source = (string) $source;
         $key = \strtolower($source);
 
-        if (!isset($this->paramCache[$key])) {
-            $source = \strtoupper($source);
-            $params = ('FILES' !== $source)
-                ? (array) \filter_input_array(\constant('INPUT_' . $source))
-                : $_FILES;
+        $source = \strtoupper($source);
+        $params = ('FILES' !== $source)
+            ? (array) \filter_input_array(\constant('INPUT_' . $source))
+            : $_FILES;
 
-            $this->paramCache[$key] = $this->_arrayToObject($params);
-        }
+        $this->$key = $this->_arrayToObject($params);
 
-        return $this->paramCache[$key];
+        return $this->$key;
     }
 
     /**
