@@ -16,7 +16,7 @@ class FrontController
     /**
      * @var string Controller directory.
      */
-    private $controllerDir = '../Application/Controllers';
+    private $controllerDir = './private/Application/Controllers';
 
     /**
      * Dependency injector for an action controllers.
