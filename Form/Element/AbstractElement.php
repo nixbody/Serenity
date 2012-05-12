@@ -107,7 +107,7 @@ abstract class AbstractElement
         $attribute = (string) $attribute;
         if (!isset($this->attributes[$attribute])) {
             $message = "Form element does not have attribute '$attribute'.";
-            throw new ElementException($message);
+            throw new \InvalidArgumentException($message);
         }
 
         return $this->attributes[$attribute];
@@ -182,13 +182,13 @@ abstract class AbstractElement
      *
      * @return AbstractElement Self instance.
      *
-     * @throws ElementException If callback is not callable.
+     * @throws \InvalidArgumentException If the given callback is not callable.
      */
     public function addValidator($callback)
     {
         if (!\is_callable($callback)) {
             $message = 'Validator must be callable.';
-            throw new ElementException();
+            throw new \InvalidArgumentException($message);
         }
 
         $this->validators[] = $callback;

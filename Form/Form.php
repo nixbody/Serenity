@@ -3,7 +3,6 @@
 namespace Serenity\Form;
 
 use Serenity\Form\Element\AbstractElement;
-use Serenity\Form\Element\ElementException;
 
 /**
  * Object representation of html form.
@@ -86,13 +85,14 @@ class Form
      *
      * @return Form Self instance.
      *
-     * @throws FormException If method is not allowed.
+     * @throws \InvalidArgumentException If method is not allowed.
      */
     public function  setMethod($method)
     {
         $method = \strtolower((string) $method);
         if (!\in_array($method, $this->allowedMethods)) {
-            throw new FormException("Method '$method' is not allowed.");
+            $message = "Method '$method' is not allowed.";
+            throw new \InvalidArgumentException($message);
         }
 
         $this->method = $method;
@@ -135,7 +135,8 @@ class Form
     {
         $element = (string) $element;
         if (!isset($this->elements[$element])) {
-            throw new FormException("Element '$element' does not exist.");
+            $message = "Element '$element' does not exist.";
+            throw new \InvalidArgumentException($message);
         }
 
         return $this->elements[$element];
