@@ -115,6 +115,24 @@ class View
     }
 
     /**
+     * Get all registered plugins as a list of closures.
+     *
+     * @return array All registered plugins as a list of closures.
+     */
+    public function getPlugins()
+    {
+        $self = $this;
+        $plugins = array();
+        foreach ($this->plugins as $name => $plugin) {
+            $plugins[$name] = function() use ($self, $name) {
+                return $self->__call($name, \func_get_args());
+            };
+        }
+
+        return $plugins;
+    }
+
+    /**
      * Get a list of assigned variables.
      *
      * @return array A list of assigned variables.
@@ -137,11 +155,11 @@ class View
     }
 
     /**
-     * Render view using specified template unless rendering is disabled.
+     * Render the view using the given template.
      *
-     * @param string $template Template file.
+     * @param string $template The template filename.
      *
-     * @return string Rendered content. Empty string if rendering is disabled.
+     * @return string Rendered view.
      *
      * @throws ViewException If template file not found.
      */
@@ -161,6 +179,7 @@ class View
 
         \ob_start();
         \extract($this->getVarialbes());
+        \extract($this->getPlugins());
         require $path;
         $content = \ob_get_contents();
         \ob_end_clean();
@@ -179,10 +198,22 @@ class View
      */
     protected function _addDefaultPlugins()
     {
-        $this->addPlugin('escape', array($this, '_escape'))
+        $this->addPlugin('_', array($this, 'out'))
+             ->addPlugin('_render', array($this, '_render'))
+             ->addPlugin('escape', array($this, '_escape'))
              ->addPlugin('translit', array($this, '_translit'))
              ->addPlugin('uriEncode', array($this, '_uriEncode'))
              ->addPlugin('uri', array($this, '_uri'));
+    }
+
+    /**
+     * Render and output the view using the given template.
+     *
+     * @param string $template The template filename.
+     */
+    protected function _render($template)
+    {
+        echo $this->render($template);
     }
 
     /**
@@ -233,18 +264,23 @@ class View
     /**
      * Create a URI from specified parameters.
      *
-     * @param array|string $params A parameters from which to create a URI.
+     * @param array|string $params     A parameters from which to create a URI.
+     * @param array|string $params,... A parameters from which to create a URI.
      *
      * @return string Created URI.
      */
     protected function _uri($params)
     {
-        if (\is_string($params)) {
-            $string = $params;
-            $params = array();
-            foreach (\preg_split('/\s*,\s*/', $string) as $pair) {
-                list($key, $value) = \preg_split('/\s*:\s*/', $pair);
-                $params[$key] = $value;
+        $params = array();
+
+        foreach (\func_get_args() as $arg) {
+            if (\is_string($arg)) {
+                foreach (\preg_split('/\s*,\s*/', $arg) as $pair) {
+                    list($key, $value) = \preg_split('/\s*:\s*/', $pair);
+                    $params[$key] = $value;
+                }
+            } else {
+                $params = \array_mergge($params, (array) $arg);
             }
         }
 
