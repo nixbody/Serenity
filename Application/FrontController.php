@@ -54,7 +54,7 @@ class FrontController
      *
      * @param string $controllerName Action controller name.
      *
-     * @throws FrontControllerException If the controller file not found.
+     * @throws \InvalidArgumentException If the controller file not found.
      */
     protected function _getController($controllerName)
     {
@@ -65,7 +65,7 @@ class FrontController
 
         if (false === $filePath) {
             $message = "Controller '$controllerName' not found.";
-            throw new FrontControllerException($message);
+            throw new \InvalidArgumentException($message);
         }
 
         require_once $filePath;
@@ -82,7 +82,8 @@ class FrontController
      *
      * @return array List of arguments.
      *
-     * @throws FrontControllerException If argument is not specified in request.
+     * @throws \InvalidArgumentException If the required argument is not
+     *                                   specified in the request.
      */
     protected function _getActionArguments($controller, $action, array $params)
     {
@@ -98,7 +99,7 @@ class FrontController
                 $arguments[] = $arg->getDefaultValue();
             } else {
                 $message = "Required action argument '$argName' not specified.";
-                throw new FrontControllerException($message);
+                throw new \InvalidArgumentException($message);
             }
         }
 
@@ -112,7 +113,7 @@ class FrontController
      * @param string $action     Action name.
      * @param array  $params     Parameters from request.
      *
-     * @throws FrontControllerException If action does not exist.
+     * @throws \InvalidArgumentException If action does not exist.
      */
     protected function _runAction($controller, $action, array $params)
     {
@@ -121,7 +122,7 @@ class FrontController
 
         if (!\method_exists($controller, $action)) {
             $message = "Action '$actionName' does not exist.";
-            throw new FrontControllerException($message);
+            throw new \InvalidArgumentException($message);
         }
 
         $arguments = $this->_getActionArguments($controller, $action, $params);
