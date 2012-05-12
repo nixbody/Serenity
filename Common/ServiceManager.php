@@ -55,7 +55,7 @@ class ServiceManager
         $serviceName = (string) $serviceName;
 
         $this->services[$serviceName] = array(
-            'class' => \preg_replace('/^\\\/', '', (string) $class, 1),
+            'class' => \ltrim((string) $class, '\\'),
             'args' => $args,
             'calls' => $calls
         );

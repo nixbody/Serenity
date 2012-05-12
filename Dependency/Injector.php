@@ -55,7 +55,7 @@ class Injector
                 if (\preg_match('/@dependency\s+/', $docComment)) {
                     \preg_match('/@var\s+([^|\s]+)/', $docComment, $class);
 
-                    $class = \preg_replace('/^\\\/', '', $class[1], 1);
+                    $class = \ltrim($class[1], '\\');
                     $dependency = (null !== $this->dependencyProvider)
                         ? \call_user_func($this->dependencyProvider, $class)
                         : new $class();
