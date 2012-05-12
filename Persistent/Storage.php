@@ -511,21 +511,26 @@ class Storage
     {
         $property->setAccessible(true);
         \preg_match('/@var\s+([^|\s]+)/', $property->getDocComment(), $type);
-        if (isset($type[1])) {
-            if ($value === null && \stripos($type[1], 'null') !== false) {
-                $value = null;
-            } else {
-                switch ($type[1]) {
-                    case '\DateTime':
-                    case 'DateTime':
-                        $value = new \DateTime($value);
-                        break;
 
-                    default:
-                        @\settype($value, $type[1]);
+        if (isset($type[1])) {
+            $type = \ltrim($type[1], '\\');
+            if (null === $value && false !== \stripos($type, 'null')) {
+                $value = null;
+            } elseif ('DateTime' === $type) {
+                $value = new \DateTime($value);
+            } elseif ('array' === $type) {
+                $value = @\unserialize($value);
+                if (false === $value) {
+                    $value = array();
+                }
+            } elseif (!@\settype($value, $type)) {
+                $value = @\unserialize($value);
+                if (false === $value) {
+                    $value = new $type();
                 }
             }
         }
+
         $property->setValue($object, $value);
     }
 
@@ -603,6 +608,8 @@ class Storage
         foreach ($data as &$value) {
             if ($value instanceof \DateTime) {
                 $value = $value->format('Y-m-d H:i:s');
+            } elseif (!\is_scalar($value)) {
+                $value = \serialize($value);
             }
         }
 
