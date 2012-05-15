@@ -280,7 +280,7 @@ class View
                     $params[$key] = $value;
                 }
             } else {
-                $params = \array_mergge($params, (array) $arg);
+                $params = \array_merge($params, (array) $arg);
             }
         }
 
