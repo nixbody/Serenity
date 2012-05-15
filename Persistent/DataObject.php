@@ -186,7 +186,14 @@ abstract class DataObject
         return $this->_storage->getObjectReflection($this);
     }
 
-    public function toArray()
+    public function setValues(array $data)
+    {
+        $data = \array_intersect_key($data, $this->getValues());
+
+        return $this->_storage->importObjectData($this, $data);
+    }
+
+    public function getValues()
     {
         static $properties = null;
 
@@ -196,13 +203,6 @@ abstract class DataObject
         }
 
         return $properties($this);
-    }
-
-    public function import(array $data)
-    {
-        $data = \array_intersect_key($data, $this->toArray());
-
-        return $this->_storage->setObjectData($this, $data);
     }
 
     /**
@@ -362,5 +362,7 @@ abstract class DataObject
         }
 
         $this->_storage->table($oldTable)->setPrimaryKey($oldPrimaryKey);
+
+        return $this;
     }
 }
