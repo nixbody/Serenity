@@ -607,7 +607,7 @@ class Storage
         foreach ($data as &$value) {
             if ($value instanceof \DateTime) {
                 $value = $value->format('Y-m-d H:i:s');
-            } elseif (!\is_scalar($value)) {
+            } elseif (null !== $value && !\is_scalar($value)) {
                 $value = \serialize($value);
             }
         }
