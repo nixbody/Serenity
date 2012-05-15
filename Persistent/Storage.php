@@ -255,13 +255,15 @@ class Storage
             \call_user_func($this->dependencyInjector, $object);
         }
 
+        if (!empty($data)) {
+            $this->importObjectData($object, $data);
+        }
+
         if (\method_exists($object, 'init')) {
             $object->init();
         }
 
-        return (!empty($data))
-            ? $this->importObjectData($object, $data)
-            : $object;
+        return $object;
     }
 
     /**
