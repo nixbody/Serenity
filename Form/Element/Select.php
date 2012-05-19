@@ -12,9 +12,18 @@ namespace Serenity\Form\Element;
 class Select extends AbstractElement
 {
     /**
-     * @var array A list of options.
+     * A list of options.
+     *
+     * @var array
      */
     protected $options = array();
+
+    /**
+     * Element html attributes.
+     *
+     * @var array
+     */
+    protected $attributes = array('value' => array());
 
     /**
      * Constructor.
@@ -87,17 +96,50 @@ class Select extends AbstractElement
     }
 
     /**
+     * Set selected values.
+     *
+     * @param array|\Traversable $value Selected values.
+     *
+     * @return AbstractElement Self instance.
+     */
+    public function setValue($value)
+    {
+        if ($value instanceof \Traversable) {
+            $value = \iterator_to_array($value, true);
+        }
+
+        $value = \array_flip((array) $value);
+        $value = \array_intersect_key($value, $this->options);
+        $this->attributes['value'] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Get selected values.
+     *
+     * @return array Selected values.
+     */
+    public function getValue()
+    {
+        return \array_keys($this->attributes['value']);
+    }
+
+    /**
      * Render element.
      *
      * @return string Rendered element.
      */
     public function render()
     {
-        $result = '<select name="' . $this->name . '" ';
-        $result .= $this->_implodeAttributes($this->attributes) . '>';
+        $attributes = $this->attributes;
+        unset($attributes['value']);
+
+        $result = '<select name="' . $this->name . '[]" ';
+        $result .= $this->_implodeAttributes($attributes) . '>';
 
         foreach ($this->options as $value => $label) {
-            $selected = ($value == $this->attributes['value'])
+            $selected = isset($this->attributes['value'][$value])
                 ? ' selected="selected"'
                 : '';
 
