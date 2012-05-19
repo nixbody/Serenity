@@ -3,45 +3,14 @@
 namespace Serenity\Form\Element;
 
 /**
- * This class represents form element multi-select.
+ * This class represents form element checklist.
  *
  * @category   Serenity
  * @package    Form
  * @subpackage Element
  */
-class MultiSelect extends Select
+class CheckSelect extends Select
 {
-    /**
-     * @var array Element html attributes.
-     */
-    protected $attributes = array('value' => array());
-
-    /**
-     * Set selected values.
-     *
-     * @param array $value Selected values.
-     *
-     * @return AbstractElement Self instance.
-     */
-    public function setValue($value)
-    {
-        $value = \array_flip((array) $value);
-        $value = \array_intersect_key($value, $this->options);
-        $this->attributes['value'] = $value;
-
-        return $this;
-    }
-
-    /**
-     * Get selected values.
-     *
-     * @return array Selected values.
-     */
-    public function getValue()
-    {
-        return \array_keys($this->attributes['value']);
-    }
-
     /**
      * Render element.
      *
