@@ -12,24 +12,39 @@ namespace Serenity\Form\Element;
 abstract class AbstractElement
 {
     /**
-     * @var string Name of element.
+     * Name of element.
+     *
+     * @var string
      */
     protected $name;
 
     /**
-     * @var string Element label.
+     * Element label.
+     *
+     * @var string
      */
     protected $label;
 
     /**
-     * @var array Element html attributes.
+     * Element html attributes.
+     *
+     * @var array
      */
     protected $attributes = array('value' => '');
 
     /**
-     * @var array List of validation callbacks.
+     * List of validation callbacks.
+     *
+     * @var array
      */
     protected $validators = array();
+
+    /**
+     * A message attached to the element.
+     *
+     * @var string
+     */
+    protected $message = '';
 
     /**
      * Constructor.
@@ -61,6 +76,9 @@ abstract class AbstractElement
 
             case 'label':
                 return $this->label;
+
+            case 'value':
+                return $this->getValue();
 
             case 'message':
                 return $this->message;
@@ -200,40 +218,64 @@ abstract class AbstractElement
     }
 
     /**
-     * Add validator.
+     * Add a validator to the element.
      *
-     * @param mixed $callback Validation callback.
+     * @param callable $callback    The validation callback.
+     * @param string   $message     A message to be shown if validation fails.
+     * @param mixed    $message,... Optional arguments to be passed to the given
+     *                              callback.
      *
      * @return AbstractElement Self instance.
      *
      * @throws \InvalidArgumentException If the given callback is not callable.
      */
-    public function addValidator($callback)
+    public function addValidator($callback, $message)
     {
         if (!\is_callable($callback)) {
             $message = 'Validator must be callable.';
             throw new \InvalidArgumentException($message);
         }
 
-        $this->validators[] = $callback;
+        $this->validators[] = array(
+            'callback' => $callback,
+            'message' => (string) $message,
+            'args' => \array_slice(\func_get_args(), 2)
+        );
 
         return $this;
     }
 
     /**
-     * Validates element's value through list of validators.
+     * Validate element's value through the list of
+     * previously added validators.
      *
-     * @return bool True if valid false otherwise.
+     * @return bool True if the element's value is valid, false otherwise.
      */
     public function isValid()
     {
+        $value = $this->getValue();
         foreach ($this->validators as $validator) {
-            if (!$validator($this->getValue())) {
+            $callback = $validator['callback'];
+            \array_unshift($validator['args'], $value);
+
+            if (!\call_user_func_array($callback, $validator['args'])) {
+                $this->message = $validator['message'];
+
                 return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * Get a message attached to the element.
+     *
+     * @return string A message attached to the element.
+     */
+    public function getMessage()
+    {
+        return $this->message;
     }
 
     protected function _implodeAttributes($attributes)
