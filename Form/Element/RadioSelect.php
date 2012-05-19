@@ -19,7 +19,7 @@ class RadioSelect extends Select
     public function render()
     {
         $attributes = $this->attributes;
-        $selectValue = $attributes['value'];
+        $selectValue = \key($attributes['value']);
         unset($attributes['value']);
 
         $attributes = $this->_implodeAttributes($attributes);
@@ -31,7 +31,7 @@ class RadioSelect extends Select
                    . ' name="' . $this->name . '"'
                    . ' value="' . $value . '"'
                    . ' type="radio"';
-            if ($value == $selectValue) {
+            if ($value === $selectValue) {
                 $input .= ' checked="checked"';
             }
             $input .= ' />';
